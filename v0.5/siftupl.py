@@ -57,6 +57,7 @@ class SiFT_UPL:
         file_size += len(chunk)
         self.mtp.send_msg(self.mtp.type_upload_req_1, chunk)
         h.update(chunk)
+        file.close()
 
         # trying to receive a upload respoonse
         try:
@@ -103,19 +104,44 @@ class SiFT_UPL:
 
 
         # TODO: implement this function!
-        file = open(filepath, 'rb')
-        chunk = file.read(self.size_fragment)
+        type, body = self.mtp.receive_msg()
+        if not (type == self.mtp.type_upload_req_0 or type == self.mtp.type_upload_req_1):
+            raise Exception("Expect request")
+
+        file = open(filepath, "a")
+
         file_size = 0
         h = SHA256.new()
+        content = ""
 
-        while chunk and len(chunk) > 1024:
-            file_size += self.size_fragment
-            chunk = file.read(self.size_fragment)
-            chunk = chunk.decode("utf-8")
-            h.update(chunk)
+        if type == self.mtp.type_upload_req_0:
+            while type == self.mtp.type_upload_req_0:
+                file.write(body)
+                content += body
+                # Check if it is one
+                type, body = self.mtp.receive_msg()
 
-        file_size += len(chunk)
-        h.update(chunk)
+
+        # file = open(filepath, 'rb')
+        # chunk = file.read(self.size_fragment)
+        type, body = self.mtp.receive_msg()
+        file.write(body)
+        content += body
+
+        file.close()
+
+        h.update(content)
+        #
+        # while chunk and len(chunk) > 1024:
+        #     file_size += self.size_fragment
+        #     chunk = file.read(self.size_fragment)
+        #     chunk = chunk.decode("utf-8")
+        #     h.update(chunk)
+        # 
+        # file_size += len(chunk)
+        # h.update()
+        #
+        # file.close()
 
         struct = {}
         struct["file_hash"] = h.digest()
@@ -126,7 +152,7 @@ class SiFT_UPL:
         try:
             self.mtp.send_msg(self.mtp.type_upload_res, response)
         except SiFT_MTP_Error as e:
-            raise Exception('Unable to send login response --> ' + e.err_msg)
+            raise Exception('Unable to send server response --> ' + e.err_msg)
 
 
 
